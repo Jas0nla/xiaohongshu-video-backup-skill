@@ -21,6 +21,42 @@ def parse_result(stdout: str) -> dict:
     return json.loads(match.group(1).strip())
 
 
+def resolve_share_url(pwcli: str, env: dict, url: str, timeout_seconds: int) -> str:
+    if "xhslink.com" not in url:
+        return url
+
+    js = f"""async () => {{
+      const start = Date.now();
+      while (Date.now() - start < {timeout_seconds * 1000}) {{
+        const href = window.location.href;
+        if (href && !href.includes('xhslink.com')) {{
+          return {{ finalUrl: href }};
+        }}
+        await new Promise(r => setTimeout(r, 500));
+      }}
+      return {{ finalUrl: window.location.href }};
+    }}"""
+    subprocess.run(
+        [pwcli, "open", url],
+        env=env,
+        capture_output=True,
+        text=True,
+        timeout=40,
+        check=True,
+    )
+    result = subprocess.run(
+        [pwcli, "eval", js],
+        env=env,
+        capture_output=True,
+        text=True,
+        timeout=timeout_seconds + 15,
+        check=True,
+    )
+    parsed = parse_result(result.stdout)
+    final_url = parsed.get("finalUrl") or url
+    return final_url
+
+
 def resolve_video(pwcli: str, env: dict, url: str, timeout_seconds: int) -> dict:
     js = f"""async () => {{
       const url = {json.dumps(url, ensure_ascii=False)};
@@ -89,9 +125,15 @@ def main() -> None:
     for index, url in enumerate(urls, 1):
         print(f"[{index}/{len(urls)}] {url}", flush=True)
         try:
-            info = resolve_video(pwcli, env, url, args.timeout_seconds)
+            print("stage: resolving-share-url", flush=True)
+            effective_url = resolve_share_url(pwcli, env, url, min(args.timeout_seconds, 20))
+            if effective_url != url:
+                print(f"resolved-url: {effective_url}", flush=True)
+            print("stage: extracting-video", flush=True)
+            info = resolve_video(pwcli, env, effective_url, args.timeout_seconds)
             title = sanitize(info["title"])
             target = output_dir / f"{title}.mp4"
+            print(f"stage: downloading-file -> {target.name}", flush=True)
             subprocess.run(
                 ["curl", "-L", info["downloadUrl"], "-o", str(target)],
                 check=True,

@@ -328,6 +328,40 @@ class App:
             self.update_progress(index - 1, f"第 {index} / {total} 条，正在解析: {url}")
             return
 
+        if line == "stage: resolving-share-url":
+            if self.current_task_total > 0:
+                current = min(self.current_task_done + 1, self.current_task_total)
+                self.progress_detail_var.set(
+                    f"第 {current} / {self.current_task_total} 条，正在解析分享短链..."
+                )
+            return
+
+        if line.startswith("resolved-url: "):
+            resolved = line.split(": ", 1)[1]
+            if self.current_task_total > 0:
+                current = min(self.current_task_done + 1, self.current_task_total)
+                self.progress_detail_var.set(
+                    f"第 {current} / {self.current_task_total} 条，已展开为: {resolved}"
+                )
+            return
+
+        if line == "stage: extracting-video":
+            if self.current_task_total > 0:
+                current = min(self.current_task_done + 1, self.current_task_total)
+                self.progress_detail_var.set(
+                    f"第 {current} / {self.current_task_total} 条，正在获取视频信息..."
+                )
+            return
+
+        if line.startswith("stage: downloading-file -> "):
+            filename = line.split("-> ", 1)[1]
+            if self.current_task_total > 0:
+                current = min(self.current_task_done + 1, self.current_task_total)
+                self.progress_detail_var.set(
+                    f"第 {current} / {self.current_task_total} 条，正在下载: {filename}"
+                )
+            return
+
         if line.startswith("saved: "):
             saved_name = line[7:].strip()
             done = min(self.current_task_done + 1, self.current_task_total or self.current_task_done + 1)
