@@ -2,6 +2,7 @@
 import json
 import os
 import queue
+import re
 import subprocess
 import threading
 import tkinter as tk
@@ -11,6 +12,7 @@ from typing import Callable, Optional
 
 
 APP_NAME = "Xiaohongshu Video Backup"
+URL_PATTERN = re.compile(r"https?://[^\s]+")
 
 
 def resolve_root() -> Path:
@@ -229,6 +231,20 @@ class App:
         raw = self.urls_text.get("1.0", "end").strip()
         if not raw:
             return []
+        found = URL_PATTERN.findall(raw)
+        urls = []
+        seen = set()
+        for item in found:
+            candidate = item.strip().rstrip("，。；;！？!）)]}>\"'")
+            if "xhslink.com" not in candidate and "xiaohongshu.com" not in candidate:
+                continue
+            if candidate not in seen:
+                seen.add(candidate)
+                urls.append(candidate)
+
+        if urls:
+            return urls
+
         return [line.strip() for line in raw.splitlines() if line.strip()]
 
     def write_inline_urls_file(self) -> Path:
@@ -273,7 +289,7 @@ class App:
         inline_urls = self.get_inline_urls()
         if inline_urls:
             urls_file = self.write_inline_urls_file()
-            self.status_var.set(f"将使用输入框中的 {len(inline_urls)} 条链接开始下载。")
+            self.status_var.set(f"已自动识别出 {len(inline_urls)} 条有效链接，开始下载。")
         else:
             urls_file = self.validate_urls_file()
             if not urls_file:
