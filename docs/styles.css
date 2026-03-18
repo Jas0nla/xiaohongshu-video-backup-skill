@@ -57,7 +57,8 @@ h1,
 h2,
 h3,
 p,
-ul {
+ul,
+ol {
   margin-top: 0;
 }
 
@@ -128,6 +129,16 @@ ul {
   padding-left: 20px;
   color: var(--muted);
   line-height: 1.8;
+}
+
+ol {
+  padding-left: 24px;
+  color: var(--muted);
+  line-height: 1.9;
+}
+
+.steps li + li {
+  margin-top: 6px;
 }
 
 .code-panel pre {

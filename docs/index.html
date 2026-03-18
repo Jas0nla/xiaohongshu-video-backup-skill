@@ -34,6 +34,16 @@
         </ul>
       </section>
 
+      <section class="panel">
+        <h2>最简单的用法</h2>
+        <ol class="steps">
+          <li>下载仓库到本地。</li>
+          <li>准备一个 `urls.txt`，一行一个小红书链接。</li>
+          <li>复制命令下载视频。</li>
+          <li>再复制命令生成同名文字笔记。</li>
+        </ol>
+      </section>
+
       <section class="grid">
         <article class="card">
           <h3>1. 下载视频</h3>
@@ -56,8 +66,11 @@
       </section>
 
       <section class="panel code-panel">
-        <h2>示例命令</h2>
-        <pre><code>python3 skill/scripts/download_videos.py \
+        <h2>复制这几段就能用</h2>
+        <pre><code>git clone https://github.com/Jas0nla/xiaohongshu-video-backup-skill.git
+cd xiaohongshu-video-backup-skill
+
+python3 skill/scripts/download_videos.py \
   --urls-file /abs/path/urls.txt \
   --output-dir /abs/path/xhs_videos \
   --failures-file /abs/path/download_failures.json
@@ -66,6 +79,15 @@ python3 skill/scripts/generate_notes.py \
   --videos-dir /abs/path/xhs_videos \
   --transcripts-dir /abs/path/xhs_transcripts \
   --notes-dir /abs/path/xhs_notes</code></pre>
+      </section>
+
+      <section class="panel">
+        <h2>先准备什么</h2>
+        <ul>
+          <li>一个 `urls.txt` 文件，一行一个小红书链接。</li>
+          <li>本机可用的 `python3`、`curl`、`npx`、`whisper`。</li>
+          <li>如果你在 Codex 里用，还需要本机有 `playwright` skill。</li>
+        </ul>
       </section>
 
       <section class="panel">
