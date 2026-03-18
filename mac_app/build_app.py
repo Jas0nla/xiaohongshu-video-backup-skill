@@ -55,7 +55,12 @@ exec /usr/bin/env python3 "$RESOURCES_DIR/app/mac_app/app.py"
 
 
 def copy_tree(source: Path, target: Path) -> None:
-    shutil.copytree(source, target, dirs_exist_ok=True)
+    shutil.copytree(
+        source,
+        target,
+        dirs_exist_ok=True,
+        ignore=shutil.ignore_patterns("__pycache__", "*.pyc", ".DS_Store"),
+    )
 
 
 def make_executable(path: Path) -> None:

@@ -7,6 +7,7 @@ import threading
 import tkinter as tk
 from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
+from typing import Callable, Optional
 
 
 APP_NAME = "Xiaohongshu Video Backup"
@@ -46,7 +47,7 @@ class App:
         self.root.geometry("980x760")
         self.root.minsize(860, 680)
 
-        self.log_queue: "queue.Queue[str]" = queue.Queue()
+        self.log_queue = queue.Queue()
         self.busy = False
 
         self.urls_file_var = tk.StringVar(value=str(DEFAULT_WORKSPACE / "urls.txt"))
@@ -216,7 +217,7 @@ class App:
         self.download_button.configure(state=state)
         self.notes_button.configure(state=state)
 
-    def validate_urls_file(self) -> Path | None:
+    def validate_urls_file(self) -> Optional[Path]:
         path = Path(self.urls_file_var.get()).expanduser()
         if not path.exists():
             messagebox.showerror("缺少链接文件", "请先选择一个存在的 urls.txt 文件。")
@@ -290,7 +291,9 @@ class App:
         count = len(list(notes_dir.glob("*.md"))) if notes_dir.exists() else 0
         self.status_var.set(f"笔记生成完成，当前共有 {count} 份 Markdown 笔记。")
 
-    def _run_background(self, status_text: str, cmd: list[str], on_success) -> None:
+    def _run_background(
+        self, status_text: str, cmd: list, on_success: Callable[[], None]
+    ) -> None:
         self.set_busy(True)
         self.status_var.set(status_text)
         self.log("\n" + "=" * 70)
