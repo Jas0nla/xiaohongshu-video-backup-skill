@@ -1,0 +1,7 @@
+interface:
+  display_name: "Xiaohongshu Backup"
+  short_description: "Back up Xiaohongshu videos and notes."
+  default_prompt: "Use $xiaohongshu-video-backup to download Xiaohongshu videos, retry failed links, and generate same-name Markdown notes."
+
+policy:
+  allow_implicit_invocation: true

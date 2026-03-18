@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Xiaohongshu Video Backup Skill</title>
+    <meta
+      name="description"
+      content="一个用于备份小红书视频、失败重试和生成同名内容笔记的 Codex Skill。"
+    />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="page">
+      <section class="hero">
+        <p class="eyebrow">Codex Skill</p>
+        <h1>Xiaohongshu Video Backup</h1>
+        <p class="lead">
+          把小红书视频备份、重试失败链接、转写成同名文字笔记，收成一套可重复使用的工作流。
+        </p>
+        <div class="hero-actions">
+          <a class="button primary" href="../skill/SKILL.md">查看 Skill</a>
+          <a class="button secondary" href="../README.md">查看 README</a>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>它解决什么问题</h2>
+        <ul>
+          <li>批量处理小红书笔记链接，不用手动一条条下载。</li>
+          <li>根据解析到的小红书标题自动命名视频文件。</li>
+          <li>遇到中断或超时后，可以按失败列表继续补下。</li>
+          <li>把下载好的 MP4 转成同名转写和 Markdown 内容笔记。</li>
+        </ul>
+      </section>
+
+      <section class="grid">
+        <article class="card">
+          <h3>1. 下载视频</h3>
+          <p>
+            用 `greenvideo.cc` 做解析，脚本读取 URL 列表，下载视频，并把失败项单独记录下来。
+          </p>
+        </article>
+        <article class="card">
+          <h3>2. 断点补跑</h3>
+          <p>
+            如果电脑关机、批处理超时、个别链接解析慢，只需要拿失败文件继续跑，不必从头开始。
+          </p>
+        </article>
+        <article class="card">
+          <h3>3. 生成笔记</h3>
+          <p>
+            用 Whisper 转写中文视频，输出同名 `.txt` 和 `.md`，便于归档、检索和二次改写。
+          </p>
+        </article>
+      </section>
+
+      <section class="panel code-panel">
+        <h2>示例命令</h2>
+        <pre><code>python3 skill/scripts/download_videos.py \
+  --urls-file /abs/path/urls.txt \
+  --output-dir /abs/path/xhs_videos \
+  --failures-file /abs/path/download_failures.json
+
+python3 skill/scripts/generate_notes.py \
+  --videos-dir /abs/path/xhs_videos \
+  --transcripts-dir /abs/path/xhs_transcripts \
+  --notes-dir /abs/path/xhs_notes</code></pre>
+      </section>
+
+      <section class="panel">
+        <h2>仓库内容</h2>
+        <ul>
+          <li><strong>skill/</strong>：可直接复用的 Codex Skill</li>
+          <li><strong>docs/</strong>：GitHub Pages 静态介绍页</li>
+          <li><strong>README.md</strong>：快速说明和命令示例</li>
+        </ul>
+      </section>
+    </main>
+  </body>
+  </html>
