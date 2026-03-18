@@ -50,6 +50,26 @@ chmod +x ./launch_mac_app.command
 - `workspace/xhs_notes`
 - `workspace/download_failures.json`
 
+## 生成真正的 .app
+
+如果你想得到一个标准的 macOS `.app` 包：
+
+```bash
+python3 mac_app/build_app.py
+```
+
+生成后会在这里：
+
+`dist/Xiaohongshu Video Backup.app`
+
+然后你可以直接双击：
+
+`dist/Xiaohongshu Video Backup.app`
+
+这个 `.app` 默认把工作目录放在：
+
+`~/Documents/Xiaohongshu Video Backup`
+
 ## 命令行用法
 
 ### 1. 下载这个仓库
@@ -140,6 +160,7 @@ Use $xiaohongshu-video-backup to download Xiaohongshu videos, retry failed links
 
 - `skill/`：Skill 本体和脚本
 - `mac_app/`：Mac 桌面版入口
+- `mac_app/build_app.py`：生成 `.app` 的打包脚本
 - `launch_mac_app.command`：双击启动文件
 - `docs/`：GitHub Pages 说明页
 - `README.md`：这份傻瓜式说明

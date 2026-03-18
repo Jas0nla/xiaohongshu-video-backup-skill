@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import json
+import os
 import queue
 import subprocess
 import threading
@@ -8,10 +9,34 @@ from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
 
 
-ROOT = Path(__file__).resolve().parents[1]
+APP_NAME = "Xiaohongshu Video Backup"
+
+
+def resolve_root() -> Path:
+    env_root = os.environ.get("XHS_BACKUP_APP_ROOT")
+    if env_root:
+        candidate = Path(env_root).expanduser().resolve()
+        if (candidate / "skill" / "scripts").exists():
+            return candidate
+
+    current = Path(__file__).resolve()
+    for parent in [current.parent, *current.parents]:
+        if (parent / "skill" / "scripts").exists():
+            return parent
+    raise RuntimeError("Could not locate app root containing skill/scripts.")
+
+
+def resolve_workspace() -> Path:
+    env_workspace = os.environ.get("XHS_BACKUP_WORKSPACE")
+    if env_workspace:
+        return Path(env_workspace).expanduser()
+    return Path.home() / "Documents" / APP_NAME
+
+
+ROOT = resolve_root()
 DOWNLOAD_SCRIPT = ROOT / "skill" / "scripts" / "download_videos.py"
 NOTES_SCRIPT = ROOT / "skill" / "scripts" / "generate_notes.py"
-DEFAULT_WORKSPACE = ROOT / "workspace"
+DEFAULT_WORKSPACE = resolve_workspace()
 
 
 class App:
@@ -325,7 +350,7 @@ def main() -> None:
         pass
     app = App(root)
     app.log("欢迎使用 Xiaohongshu Video Backup。")
-    app.log("默认工作目录在仓库里的 workspace/。")
+    app.log(f"默认工作目录: {DEFAULT_WORKSPACE}")
     root.mainloop()
 
 
