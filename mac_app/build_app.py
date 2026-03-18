@@ -15,7 +15,11 @@ APPLESCRIPT = """
 on run
   set appRoot to POSIX path of ((path to me as text) & "Contents:Resources:app:")
   set workspacePath to POSIX path of ((path to documents folder as text) & "Xiaohongshu Video Backup")
-  do shell script "export XHS_BACKUP_APP_ROOT=" & quoted form of appRoot & "; export XHS_BACKUP_WORKSPACE=" & quoted form of workspacePath & "; /usr/bin/env python3 " & quoted form of (appRoot & "mac_app/app.py") & " >/tmp/xhs_app_stdout.log 2>/tmp/xhs_app_stderr.log &"
+  set shellCommand to "export XHS_BACKUP_APP_ROOT=" & quoted form of appRoot & "; export XHS_BACKUP_WORKSPACE=" & quoted form of workspacePath & "; /usr/bin/env python3 " & quoted form of (appRoot & "mac_app/app.py")
+  tell application "Terminal"
+    activate
+    do script shellCommand
+  end tell
 end run
 """
 
