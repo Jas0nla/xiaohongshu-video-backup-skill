@@ -1,58 +1,67 @@
 #!/usr/bin/env python3
-import subprocess
 import shutil
-import tempfile
 from pathlib import Path
+
+import importlib.resources
+
+if not hasattr(importlib.resources, "files"):
+    import importlib_resources
+
+    importlib.resources.files = importlib_resources.files
+
+from setuptools import setup
 
 
 ROOT = Path(__file__).resolve().parents[1]
 APP_NAME = "Xiaohongshu Video Backup"
 APP_DIR = ROOT / "dist" / f"{APP_NAME}.app"
-CONTENTS_DIR = APP_DIR / "Contents"
-RESOURCES_DIR = CONTENTS_DIR / "Resources"
-PAYLOAD_DIR = RESOURCES_DIR / "app"
-APPLESCRIPT = """
-on run
-  set appRoot to POSIX path of ((path to me as text) & "Contents:Resources:app:")
-  set workspacePath to POSIX path of ((path to documents folder as text) & "Xiaohongshu Video Backup")
-  set shellCommand to "export XHS_BACKUP_APP_ROOT=" & quoted form of appRoot & "; export XHS_BACKUP_WORKSPACE=" & quoted form of workspacePath & "; /usr/bin/env python3 " & quoted form of (appRoot & "mac_app/app.py")
-  tell application "Terminal"
-    activate
-    do script shellCommand
-  end tell
-end run
-"""
 
 
-def copy_tree(source: Path, target: Path) -> None:
-    shutil.copytree(
-        source,
-        target,
-        dirs_exist_ok=True,
-        ignore=shutil.ignore_patterns("__pycache__", "*.pyc", ".DS_Store"),
-    )
-def build_launcher_app(target: Path) -> None:
-    with tempfile.NamedTemporaryFile("w", suffix=".applescript", delete=False) as handle:
-        handle.write(APPLESCRIPT)
-        script_path = Path(handle.name)
-    try:
-        subprocess.run(
-            ["osacompile", "-o", str(target), str(script_path)],
-            check=True,
-        )
-    finally:
-        script_path.unlink(missing_ok=True)
+def collect_files(folder: Path) -> list:
+    files = []
+    for path in folder.rglob("*"):
+        if path.is_dir():
+            continue
+        if path.name == ".DS_Store":
+            continue
+        if path.suffix == ".pyc":
+            continue
+        if "__pycache__" in path.parts:
+            continue
+        files.append(str(path))
+    return files
 
 
 def main() -> None:
     if APP_DIR.exists():
         shutil.rmtree(APP_DIR)
 
-    build_launcher_app(APP_DIR)
-    RESOURCES_DIR.mkdir(parents=True, exist_ok=True)
-
-    copy_tree(ROOT / "skill", PAYLOAD_DIR / "skill")
-    copy_tree(ROOT / "mac_app", PAYLOAD_DIR / "mac_app")
+    setup(
+        app=[str(ROOT / "mac_app" / "app.py")],
+        name=APP_NAME,
+        data_files=[
+            ("app/skill", collect_files(ROOT / "skill")),
+        ],
+        options={
+            "py2app": {
+                "argv_emulation": False,
+                "plist": {
+                    "CFBundleName": APP_NAME,
+                    "CFBundleDisplayName": APP_NAME,
+                    "CFBundleIdentifier": "cc.greenvideo.xiaohongshu-backup",
+                    "CFBundleShortVersionString": "1.0",
+                    "CFBundleVersion": "1",
+                    "LSMinimumSystemVersion": "13.0",
+                },
+                "packages": [],
+                "includes": ["tkinter"],
+                "iconfile": None,
+                "site_packages": True,
+            }
+        },
+        setup_requires=["py2app"],
+        script_args=["py2app"],
+    )
 
     print(f"Built app bundle: {APP_DIR}")
 

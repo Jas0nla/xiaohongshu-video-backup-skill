@@ -4,6 +4,7 @@ import os
 import queue
 import re
 import subprocess
+import sys
 import threading
 import tkinter as tk
 from pathlib import Path
@@ -19,6 +20,11 @@ def resolve_root() -> Path:
     env_root = os.environ.get("XHS_BACKUP_APP_ROOT")
     if env_root:
         candidate = Path(env_root).expanduser().resolve()
+        if (candidate / "skill" / "scripts").exists():
+            return candidate
+
+    if getattr(sys, "frozen", False):
+        candidate = Path(sys.executable).resolve().parents[1] / "Resources" / "app"
         if (candidate / "skill" / "scripts").exists():
             return candidate
 
