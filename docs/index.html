@@ -16,7 +16,7 @@
         <p class="eyebrow">Codex Skill</p>
         <h1>Xiaohongshu Video Backup</h1>
         <p class="lead">
-          把小红书视频备份、重试失败链接、转写成同名文字笔记，收成一套可重复使用的工作流。
+          把小红书视频备份、重试失败链接、转写成同名文字笔记，收成一套可重复使用的工作流，现在也可以直接作为 Mac 桌面工具来跑。
         </p>
         <div class="hero-actions">
           <a class="button primary" href="../skill/SKILL.md">查看 Skill</a>
@@ -35,12 +35,22 @@
       </section>
 
       <section class="panel">
+        <h2>现在可以当 Mac App 用</h2>
+        <ul>
+          <li>仓库里已经带了桌面界面。</li>
+          <li>双击 `launch_mac_app.command` 就能启动。</li>
+          <li>窗口里直接选链接文件、视频目录、笔记目录，再点按钮运行。</li>
+          <li>运行日志会显示在窗口底部。</li>
+        </ul>
+      </section>
+
+      <section class="panel">
         <h2>最简单的用法</h2>
         <ol class="steps">
           <li>下载仓库到本地。</li>
+          <li>双击 `launch_mac_app.command`。</li>
           <li>准备一个 `urls.txt`，一行一个小红书链接。</li>
-          <li>复制命令下载视频。</li>
-          <li>再复制命令生成同名文字笔记。</li>
+          <li>在窗口里点下载和生成笔记。</li>
         </ol>
       </section>
 
@@ -66,11 +76,17 @@
       </section>
 
       <section class="panel code-panel">
-        <h2>复制这几段就能用</h2>
+        <h2>Mac 上这样启动</h2>
         <pre><code>git clone https://github.com/Jas0nla/xiaohongshu-video-backup-skill.git
 cd xiaohongshu-video-backup-skill
+chmod +x ./launch_mac_app.command
+./launch_mac_app.command
+</code></pre>
+      </section>
 
-python3 skill/scripts/download_videos.py \
+      <section class="panel code-panel">
+        <h2>也可以继续用命令行</h2>
+        <pre><code>python3 skill/scripts/download_videos.py \
   --urls-file /abs/path/urls.txt \
   --output-dir /abs/path/xhs_videos \
   --failures-file /abs/path/download_failures.json
@@ -93,6 +109,8 @@ python3 skill/scripts/generate_notes.py \
       <section class="panel">
         <h2>仓库内容</h2>
         <ul>
+          <li><strong>mac_app/</strong>：Mac 桌面版 GUI</li>
+          <li><strong>launch_mac_app.command</strong>：双击启动入口</li>
           <li><strong>skill/</strong>：可直接复用的 Codex Skill</li>
           <li><strong>docs/</strong>：GitHub Pages 静态介绍页</li>
           <li><strong>README.md</strong>：快速说明和命令示例</li>

@@ -1,0 +1,333 @@
+#!/usr/bin/env python3
+import json
+import queue
+import subprocess
+import threading
+import tkinter as tk
+from pathlib import Path
+from tkinter import filedialog, messagebox, ttk
+
+
+ROOT = Path(__file__).resolve().parents[1]
+DOWNLOAD_SCRIPT = ROOT / "skill" / "scripts" / "download_videos.py"
+NOTES_SCRIPT = ROOT / "skill" / "scripts" / "generate_notes.py"
+DEFAULT_WORKSPACE = ROOT / "workspace"
+
+
+class App:
+    def __init__(self, root: tk.Tk) -> None:
+        self.root = root
+        self.root.title("Xiaohongshu Video Backup")
+        self.root.geometry("980x760")
+        self.root.minsize(860, 680)
+
+        self.log_queue: "queue.Queue[str]" = queue.Queue()
+        self.busy = False
+
+        self.urls_file_var = tk.StringVar(value=str(DEFAULT_WORKSPACE / "urls.txt"))
+        self.output_dir_var = tk.StringVar(value=str(DEFAULT_WORKSPACE / "xhs_videos"))
+        self.failures_file_var = tk.StringVar(
+            value=str(DEFAULT_WORKSPACE / "download_failures.json")
+        )
+        self.transcripts_dir_var = tk.StringVar(
+            value=str(DEFAULT_WORKSPACE / "xhs_transcripts")
+        )
+        self.notes_dir_var = tk.StringVar(value=str(DEFAULT_WORKSPACE / "xhs_notes"))
+        self.status_var = tk.StringVar(value="准备好了。先选链接文件或直接用默认路径。")
+
+        self._build_ui()
+        self._ensure_workspace()
+        self.root.after(150, self._drain_log_queue)
+
+    def _build_ui(self) -> None:
+        self.root.columnconfigure(0, weight=1)
+        self.root.rowconfigure(1, weight=1)
+
+        header = ttk.Frame(self.root, padding=18)
+        header.grid(row=0, column=0, sticky="ew")
+        header.columnconfigure(0, weight=1)
+
+        ttk.Label(
+            header,
+            text="Xiaohongshu Video Backup",
+            font=("SF Pro Display", 24, "bold"),
+        ).grid(row=0, column=0, sticky="w")
+        ttk.Label(
+            header,
+            text="选好链接文件，点按钮下载视频，再点按钮生成同名文字笔记。",
+        ).grid(row=1, column=0, sticky="w", pady=(6, 0))
+
+        body = ttk.Frame(self.root, padding=(18, 0, 18, 18))
+        body.grid(row=1, column=0, sticky="nsew")
+        body.columnconfigure(0, weight=1)
+        body.rowconfigure(2, weight=1)
+
+        paths = ttk.LabelFrame(body, text="路径设置", padding=16)
+        paths.grid(row=0, column=0, sticky="ew")
+        paths.columnconfigure(1, weight=1)
+
+        self._add_path_row(paths, 0, "链接文件", self.urls_file_var, self.pick_urls_file)
+        self._add_path_row(paths, 1, "视频目录", self.output_dir_var, self.pick_output_dir)
+        self._add_path_row(
+            paths, 2, "失败记录", self.failures_file_var, self.pick_failures_file
+        )
+        self._add_path_row(
+            paths, 3, "转写目录", self.transcripts_dir_var, self.pick_transcripts_dir
+        )
+        self._add_path_row(paths, 4, "笔记目录", self.notes_dir_var, self.pick_notes_dir)
+
+        actions = ttk.LabelFrame(body, text="操作", padding=16)
+        actions.grid(row=1, column=0, sticky="ew", pady=(16, 0))
+        for index in range(4):
+            actions.columnconfigure(index, weight=1)
+
+        self.download_button = ttk.Button(
+            actions, text="1. 下载视频", command=self.start_download
+        )
+        self.download_button.grid(row=0, column=0, sticky="ew", padx=(0, 8))
+
+        self.notes_button = ttk.Button(
+            actions, text="2. 生成笔记", command=self.start_notes
+        )
+        self.notes_button.grid(row=0, column=1, sticky="ew", padx=8)
+
+        ttk.Button(actions, text="打开工作目录", command=self.open_workspace).grid(
+            row=0, column=2, sticky="ew", padx=8
+        )
+        ttk.Button(actions, text="查看失败记录", command=self.open_failures_file).grid(
+            row=0, column=3, sticky="ew", padx=(8, 0)
+        )
+
+        log_frame = ttk.LabelFrame(body, text="运行日志", padding=12)
+        log_frame.grid(row=2, column=0, sticky="nsew", pady=(16, 0))
+        log_frame.columnconfigure(0, weight=1)
+        log_frame.rowconfigure(0, weight=1)
+
+        self.log_text = tk.Text(
+            log_frame,
+            wrap="word",
+            height=24,
+            bg="#14110f",
+            fg="#f9efe2",
+            insertbackground="#f9efe2",
+            relief="flat",
+            padx=14,
+            pady=14,
+        )
+        self.log_text.grid(row=0, column=0, sticky="nsew")
+
+        scrollbar = ttk.Scrollbar(log_frame, orient="vertical", command=self.log_text.yview)
+        scrollbar.grid(row=0, column=1, sticky="ns")
+        self.log_text.configure(yscrollcommand=scrollbar.set)
+
+        footer = ttk.Frame(self.root, padding=(18, 0, 18, 18))
+        footer.grid(row=2, column=0, sticky="ew")
+        footer.columnconfigure(0, weight=1)
+        ttk.Label(footer, textvariable=self.status_var).grid(row=0, column=0, sticky="w")
+
+    def _add_path_row(self, parent, row, label, variable, command) -> None:
+        ttk.Label(parent, text=label).grid(row=row, column=0, sticky="w", pady=6)
+        ttk.Entry(parent, textvariable=variable).grid(
+            row=row, column=1, sticky="ew", padx=12, pady=6
+        )
+        ttk.Button(parent, text="选择", command=command).grid(row=row, column=2, pady=6)
+
+    def _ensure_workspace(self) -> None:
+        DEFAULT_WORKSPACE.mkdir(parents=True, exist_ok=True)
+        Path(self.output_dir_var.get()).mkdir(parents=True, exist_ok=True)
+        Path(self.transcripts_dir_var.get()).mkdir(parents=True, exist_ok=True)
+        Path(self.notes_dir_var.get()).mkdir(parents=True, exist_ok=True)
+
+    def pick_urls_file(self) -> None:
+        path = filedialog.askopenfilename(
+            title="选择 urls.txt",
+            filetypes=[("Text files", "*.txt"), ("All files", "*.*")],
+        )
+        if path:
+            self.urls_file_var.set(path)
+
+    def pick_output_dir(self) -> None:
+        self._pick_directory(self.output_dir_var, "选择视频保存目录")
+
+    def pick_failures_file(self) -> None:
+        path = filedialog.asksaveasfilename(
+            title="选择失败记录文件",
+            defaultextension=".json",
+            initialfile=Path(self.failures_file_var.get()).name,
+            filetypes=[("JSON files", "*.json"), ("All files", "*.*")],
+        )
+        if path:
+            self.failures_file_var.set(path)
+
+    def pick_transcripts_dir(self) -> None:
+        self._pick_directory(self.transcripts_dir_var, "选择转写目录")
+
+    def pick_notes_dir(self) -> None:
+        self._pick_directory(self.notes_dir_var, "选择笔记目录")
+
+    def _pick_directory(self, variable: tk.StringVar, title: str) -> None:
+        path = filedialog.askdirectory(title=title, mustexist=False)
+        if path:
+            variable.set(path)
+
+    def log(self, message: str) -> None:
+        self.log_queue.put(message)
+
+    def _drain_log_queue(self) -> None:
+        while True:
+            try:
+                message = self.log_queue.get_nowait()
+            except queue.Empty:
+                break
+            self.log_text.insert("end", message)
+            if not message.endswith("\n"):
+                self.log_text.insert("end", "\n")
+            self.log_text.see("end")
+        self.root.after(150, self._drain_log_queue)
+
+    def set_busy(self, value: bool) -> None:
+        self.busy = value
+        state = "disabled" if value else "normal"
+        self.download_button.configure(state=state)
+        self.notes_button.configure(state=state)
+
+    def validate_urls_file(self) -> Path | None:
+        path = Path(self.urls_file_var.get()).expanduser()
+        if not path.exists():
+            messagebox.showerror("缺少链接文件", "请先选择一个存在的 urls.txt 文件。")
+            return None
+        return path
+
+    def start_download(self) -> None:
+        if self.busy:
+            return
+        urls_file = self.validate_urls_file()
+        if not urls_file:
+            return
+
+        output_dir = Path(self.output_dir_var.get()).expanduser()
+        failures_file = Path(self.failures_file_var.get()).expanduser()
+        output_dir.mkdir(parents=True, exist_ok=True)
+        failures_file.parent.mkdir(parents=True, exist_ok=True)
+
+        cmd = [
+            "python3",
+            str(DOWNLOAD_SCRIPT),
+            "--urls-file",
+            str(urls_file),
+            "--output-dir",
+            str(output_dir),
+            "--failures-file",
+            str(failures_file),
+        ]
+        self._run_background("正在下载视频...", cmd, self._download_finished)
+
+    def _download_finished(self) -> None:
+        failures_path = Path(self.failures_file_var.get()).expanduser()
+        remaining = 0
+        if failures_path.exists():
+            try:
+                remaining = len(json.loads(failures_path.read_text(encoding="utf-8")))
+            except Exception:
+                remaining = -1
+        if remaining == 0:
+            self.status_var.set("下载完成，没有失败链接。")
+        elif remaining > 0:
+            self.status_var.set(f"下载完成，还有 {remaining} 条失败链接可补跑。")
+        else:
+            self.status_var.set("下载结束，请检查失败记录文件。")
+
+    def start_notes(self) -> None:
+        if self.busy:
+            return
+        videos_dir = Path(self.output_dir_var.get()).expanduser()
+        if not videos_dir.exists():
+            messagebox.showerror("缺少视频目录", "请先下载视频，或手动选择一个存在的视频目录。")
+            return
+        transcripts_dir = Path(self.transcripts_dir_var.get()).expanduser()
+        notes_dir = Path(self.notes_dir_var.get()).expanduser()
+        transcripts_dir.mkdir(parents=True, exist_ok=True)
+        notes_dir.mkdir(parents=True, exist_ok=True)
+        cmd = [
+            "python3",
+            str(NOTES_SCRIPT),
+            "--videos-dir",
+            str(videos_dir),
+            "--transcripts-dir",
+            str(transcripts_dir),
+            "--notes-dir",
+            str(notes_dir),
+        ]
+        self._run_background("正在生成同名笔记...", cmd, self._notes_finished)
+
+    def _notes_finished(self) -> None:
+        notes_dir = Path(self.notes_dir_var.get()).expanduser()
+        count = len(list(notes_dir.glob("*.md"))) if notes_dir.exists() else 0
+        self.status_var.set(f"笔记生成完成，当前共有 {count} 份 Markdown 笔记。")
+
+    def _run_background(self, status_text: str, cmd: list[str], on_success) -> None:
+        self.set_busy(True)
+        self.status_var.set(status_text)
+        self.log("\n" + "=" * 70)
+        self.log("运行命令:")
+        self.log(" ".join(cmd))
+        self.log("=" * 70)
+
+        def worker() -> None:
+            try:
+                process = subprocess.Popen(
+                    cmd,
+                    cwd=str(ROOT),
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,
+                    text=True,
+                    bufsize=1,
+                )
+                assert process.stdout is not None
+                for line in process.stdout:
+                    self.log(line.rstrip("\n"))
+                code = process.wait()
+                if code != 0:
+                    raise subprocess.CalledProcessError(code, cmd)
+            except Exception as exc:
+                self.root.after(0, lambda: self._task_failed(exc))
+            else:
+                self.root.after(0, lambda: self._task_succeeded(on_success))
+
+        threading.Thread(target=worker, daemon=True).start()
+
+    def _task_succeeded(self, callback) -> None:
+        self.set_busy(False)
+        callback()
+
+    def _task_failed(self, exc: Exception) -> None:
+        self.set_busy(False)
+        self.status_var.set("任务失败了，请看下面日志。")
+        self.log(f"[error] {exc}")
+        messagebox.showerror("任务失败", f"运行失败：{exc}")
+
+    def open_workspace(self) -> None:
+        subprocess.run(["open", str(DEFAULT_WORKSPACE)], check=False)
+
+    def open_failures_file(self) -> None:
+        target = Path(self.failures_file_var.get()).expanduser()
+        if target.exists():
+            subprocess.run(["open", "-R", str(target)], check=False)
+        else:
+            messagebox.showinfo("还没有失败记录", "当前还没有生成失败记录文件。")
+
+
+def main() -> None:
+    root = tk.Tk()
+    try:
+        root.tk.call("source", "/System/Library/Tcl/8.6/tk.tcl")
+    except Exception:
+        pass
+    app = App(root)
+    app.log("欢迎使用 Xiaohongshu Video Backup。")
+    app.log("默认工作目录在仓库里的 workspace/。")
+    root.mainloop()
+
+
+if __name__ == "__main__":
+    main()

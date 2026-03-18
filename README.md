@@ -8,12 +8,49 @@
 - 自动按小红书标题命名 `.mp4`
 - 自动记录失败链接，方便补跑
 - 把视频转成同名 `.txt` 转写和 `.md` 内容笔记
+- 在 Mac 上用桌面窗口操作，不用一直手敲命令
 
 在线说明页：
 
 [https://jas0nla.github.io/xiaohongshu-video-backup-skill/](https://jas0nla.github.io/xiaohongshu-video-backup-skill/)
 
-## 最简单的用法
+## Mac App 用法
+
+### 1. 下载这个仓库
+
+```bash
+git clone https://github.com/Jas0nla/xiaohongshu-video-backup-skill.git
+cd xiaohongshu-video-backup-skill
+```
+
+### 2. 启动桌面版
+
+直接双击这个文件：
+
+`launch_mac_app.command`
+
+如果系统拦截，就在终端里运行：
+
+```bash
+chmod +x ./launch_mac_app.command
+./launch_mac_app.command
+```
+
+### 3. 在窗口里操作
+
+- 先选择 `urls.txt`
+- 点 `1. 下载视频`
+- 再点 `2. 生成笔记`
+- 日志会直接显示在窗口下方
+
+默认输出目录在仓库里的 `workspace/`：
+
+- `workspace/xhs_videos`
+- `workspace/xhs_transcripts`
+- `workspace/xhs_notes`
+- `workspace/download_failures.json`
+
+## 命令行用法
 
 ### 1. 下载这个仓库
 
@@ -102,5 +139,7 @@ Use $xiaohongshu-video-backup to download Xiaohongshu videos, retry failed links
 ## 仓库内容
 
 - `skill/`：Skill 本体和脚本
+- `mac_app/`：Mac 桌面版入口
+- `launch_mac_app.command`：双击启动文件
 - `docs/`：GitHub Pages 说明页
 - `README.md`：这份傻瓜式说明
