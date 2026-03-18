@@ -15,6 +15,7 @@ from setuptools import setup
 ROOT = Path(__file__).resolve().parents[1]
 APP_NAME = "Xiaohongshu Video Backup"
 APP_DIR = ROOT / "dist" / f"{APP_NAME}.app"
+ICON_FILE = ROOT / "assets" / "app-icon.icns"
 
 
 def collect_files(folder: Path) -> list:
@@ -55,7 +56,7 @@ def main() -> None:
                 },
                 "packages": [],
                 "includes": ["tkinter"],
-                "iconfile": None,
+                "iconfile": str(ICON_FILE) if ICON_FILE.exists() else None,
                 "site_packages": True,
             }
         },
