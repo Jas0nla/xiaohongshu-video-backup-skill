@@ -38,10 +38,12 @@ chmod +x ./launch_mac_app.command
 
 ### 3. 在窗口里操作
 
-- 先选择 `urls.txt`
+- 直接把多个小红书链接粘贴进输入框，一行一个
 - 点 `1. 下载视频`
 - 再点 `2. 生成笔记`
 - 日志会直接显示在窗口下方
+
+如果输入框是空的，才会回退使用 `urls.txt`。
 
 默认输出目录在仓库里的 `workspace/`：
 
@@ -155,6 +157,8 @@ Use $xiaohongshu-video-backup to download Xiaohongshu videos, retry failed links
 - Codex 的 `playwright` skill
 
 如果你只是想手动跑脚本，不一定非得理解 Skill 是什么，按上面的命令一步一步复制即可。
+
+Mac 桌面版里已经支持直接粘贴多个 URL，不一定非要先写 `txt`。
 
 ## 仓库内容
 

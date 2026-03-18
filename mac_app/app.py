@@ -86,10 +86,30 @@ class App:
         body = ttk.Frame(self.root, padding=(18, 0, 18, 18))
         body.grid(row=1, column=0, sticky="nsew")
         body.columnconfigure(0, weight=1)
-        body.rowconfigure(2, weight=1)
+        body.rowconfigure(3, weight=1)
+
+        urls_frame = ttk.LabelFrame(body, text="直接输入 URL", padding=16)
+        urls_frame.grid(row=0, column=0, sticky="nsew")
+        urls_frame.columnconfigure(0, weight=1)
+        urls_frame.rowconfigure(1, weight=1)
+
+        ttk.Label(
+            urls_frame,
+            text="支持一次粘贴多个小红书链接，一行一个。这里有内容时，会优先使用这里的链接下载。",
+        ).grid(row=0, column=0, sticky="w")
+
+        self.urls_text = tk.Text(
+            urls_frame,
+            wrap="word",
+            height=8,
+            relief="flat",
+            padx=12,
+            pady=12,
+        )
+        self.urls_text.grid(row=1, column=0, sticky="nsew", pady=(10, 0))
 
         paths = ttk.LabelFrame(body, text="路径设置", padding=16)
-        paths.grid(row=0, column=0, sticky="ew")
+        paths.grid(row=1, column=0, sticky="ew", pady=(16, 0))
         paths.columnconfigure(1, weight=1)
 
         self._add_path_row(paths, 0, "链接文件", self.urls_file_var, self.pick_urls_file)
@@ -103,8 +123,8 @@ class App:
         self._add_path_row(paths, 4, "笔记目录", self.notes_dir_var, self.pick_notes_dir)
 
         actions = ttk.LabelFrame(body, text="操作", padding=16)
-        actions.grid(row=1, column=0, sticky="ew", pady=(16, 0))
-        for index in range(4):
+        actions.grid(row=2, column=0, sticky="ew", pady=(16, 0))
+        for index in range(5):
             actions.columnconfigure(index, weight=1)
 
         self.download_button = ttk.Button(
@@ -121,11 +141,14 @@ class App:
             row=0, column=2, sticky="ew", padx=8
         )
         ttk.Button(actions, text="查看失败记录", command=self.open_failures_file).grid(
-            row=0, column=3, sticky="ew", padx=(8, 0)
+            row=0, column=3, sticky="ew", padx=8
+        )
+        ttk.Button(actions, text="清空 URL 输入", command=self.clear_url_inputs).grid(
+            row=0, column=4, sticky="ew", padx=(8, 0)
         )
 
         log_frame = ttk.LabelFrame(body, text="运行日志", padding=12)
-        log_frame.grid(row=2, column=0, sticky="nsew", pady=(16, 0))
+        log_frame.grid(row=3, column=0, sticky="nsew", pady=(16, 0))
         log_frame.columnconfigure(0, weight=1)
         log_frame.rowconfigure(0, weight=1)
 
@@ -163,6 +186,9 @@ class App:
         Path(self.output_dir_var.get()).mkdir(parents=True, exist_ok=True)
         Path(self.transcripts_dir_var.get()).mkdir(parents=True, exist_ok=True)
         Path(self.notes_dir_var.get()).mkdir(parents=True, exist_ok=True)
+        urls_file = Path(self.urls_file_var.get())
+        if not urls_file.exists():
+            urls_file.write_text("", encoding="utf-8")
 
     def pick_urls_file(self) -> None:
         path = filedialog.askopenfilename(
@@ -199,6 +225,23 @@ class App:
     def log(self, message: str) -> None:
         self.log_queue.put(message)
 
+    def get_inline_urls(self) -> list:
+        raw = self.urls_text.get("1.0", "end").strip()
+        if not raw:
+            return []
+        return [line.strip() for line in raw.splitlines() if line.strip()]
+
+    def write_inline_urls_file(self) -> Path:
+        urls = self.get_inline_urls()
+        target = Path(self.urls_file_var.get()).expanduser()
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text("\n".join(urls) + "\n", encoding="utf-8")
+        return target
+
+    def clear_url_inputs(self) -> None:
+        self.urls_text.delete("1.0", "end")
+        self.status_var.set("已清空 URL 输入框。")
+
     def _drain_log_queue(self) -> None:
         while True:
             try:
@@ -227,9 +270,14 @@ class App:
     def start_download(self) -> None:
         if self.busy:
             return
-        urls_file = self.validate_urls_file()
-        if not urls_file:
-            return
+        inline_urls = self.get_inline_urls()
+        if inline_urls:
+            urls_file = self.write_inline_urls_file()
+            self.status_var.set(f"将使用输入框中的 {len(inline_urls)} 条链接开始下载。")
+        else:
+            urls_file = self.validate_urls_file()
+            if not urls_file:
+                return
 
         output_dir = Path(self.output_dir_var.get()).expanduser()
         failures_file = Path(self.failures_file_var.get()).expanduser()

@@ -39,7 +39,8 @@
         <ul>
           <li>仓库里已经带了桌面界面。</li>
           <li>双击 `launch_mac_app.command` 就能启动。</li>
-          <li>窗口里直接选链接文件、视频目录、笔记目录，再点按钮运行。</li>
+          <li>窗口里可以直接粘贴多个 URL，一行一个。</li>
+          <li>也可以继续选择链接文件、视频目录、笔记目录。</li>
           <li>运行日志会显示在窗口底部。</li>
           <li>也可以进一步构建成标准的 `.app` 包。</li>
         </ul>
@@ -50,7 +51,7 @@
         <ol class="steps">
           <li>下载仓库到本地。</li>
           <li>双击 `launch_mac_app.command`。</li>
-          <li>准备一个 `urls.txt`，一行一个小红书链接。</li>
+          <li>直接粘贴多个小红书链接，一行一个。</li>
           <li>在窗口里点下载和生成笔记。</li>
         </ol>
       </section>
@@ -107,6 +108,7 @@ python3 skill/scripts/generate_notes.py \
       <section class="panel">
         <h2>先准备什么</h2>
         <ul>
+          <li>最省事的方式：直接把多个 URL 粘贴进窗口输入框。</li>
           <li>一个 `urls.txt` 文件，一行一个小红书链接。</li>
           <li>本机可用的 `python3`、`curl`、`npx`、`whisper`。</li>
           <li>如果你在 Codex 里用，还需要本机有 `playwright` skill。</li>
