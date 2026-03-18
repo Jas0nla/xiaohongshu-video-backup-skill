@@ -3,6 +3,7 @@ import json
 import os
 import queue
 import re
+import shutil
 import subprocess
 import sys
 import threading
@@ -46,6 +47,28 @@ ROOT = resolve_root()
 DOWNLOAD_SCRIPT = ROOT / "skill" / "scripts" / "download_videos.py"
 NOTES_SCRIPT = ROOT / "skill" / "scripts" / "generate_notes.py"
 DEFAULT_WORKSPACE = resolve_workspace()
+
+
+def build_runtime_env() -> dict:
+    env = os.environ.copy()
+    path_parts = env.get("PATH", "").split(":") if env.get("PATH") else []
+    common_paths = [
+        "/opt/homebrew/bin",
+        "/usr/local/bin",
+        "/usr/bin",
+        "/bin",
+        "/usr/sbin",
+        "/sbin",
+        str(Path.home() / "miniconda3" / "bin"),
+    ]
+    merged = []
+    for item in common_paths + path_parts:
+        if item and item not in merged:
+            merged.append(item)
+    env["PATH"] = ":".join(merged)
+    env.setdefault("HOME", str(Path.home()))
+    env.setdefault("CODEX_HOME", str(Path.home() / ".codex"))
+    return env
 
 
 class App:
@@ -516,6 +539,7 @@ class App:
                 process = subprocess.Popen(
                     cmd,
                     cwd=str(ROOT),
+                    env=build_runtime_env(),
                     stdout=subprocess.PIPE,
                     stderr=subprocess.STDOUT,
                     text=True,

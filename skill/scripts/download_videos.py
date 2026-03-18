@@ -21,39 +21,50 @@ def parse_result(stdout: str) -> dict:
     return json.loads(match.group(1).strip())
 
 
-def resolve_share_url(pwcli: str, env: dict, url: str, timeout_seconds: int) -> str:
+def build_runtime_env() -> dict:
+    env = os.environ.copy()
+    path_parts = env.get("PATH", "").split(":") if env.get("PATH") else []
+    common_paths = [
+        "/opt/homebrew/bin",
+        "/usr/local/bin",
+        "/usr/bin",
+        "/bin",
+        "/usr/sbin",
+        "/sbin",
+        str(Path.home() / "miniconda3" / "bin"),
+    ]
+    merged = []
+    for item in common_paths + path_parts:
+        if item and item not in merged:
+            merged.append(item)
+    env["PATH"] = ":".join(merged)
+    env["CODEX_HOME"] = str(Path.home() / ".codex")
+    return env
+
+
+def resolve_share_url(url: str, timeout_seconds: int) -> str:
     if "xhslink.com" not in url:
         return url
 
-    js = f"""async () => {{
-      const start = Date.now();
-      while (Date.now() - start < {timeout_seconds * 1000}) {{
-        const href = window.location.href;
-        if (href && !href.includes('xhslink.com')) {{
-          return {{ finalUrl: href }};
-        }}
-        await new Promise(r => setTimeout(r, 500));
-      }}
-      return {{ finalUrl: window.location.href }};
-    }}"""
-    subprocess.run(
-        [pwcli, "open", url],
-        env=env,
-        capture_output=True,
-        text=True,
-        timeout=40,
-        check=True,
-    )
+    share_url = url.replace("http://xhslink.com", "https://xhslink.com")
     result = subprocess.run(
-        [pwcli, "eval", js],
-        env=env,
+        [
+            "curl",
+            "-Ls",
+            "--max-time",
+            str(timeout_seconds),
+            "-o",
+            "/dev/null",
+            "-w",
+            "%{url_effective}",
+            share_url,
+        ],
         capture_output=True,
         text=True,
-        timeout=timeout_seconds + 15,
+        timeout=timeout_seconds + 5,
         check=True,
     )
-    parsed = parse_result(result.stdout)
-    final_url = parsed.get("finalUrl") or url
+    final_url = result.stdout.strip() or share_url
     return final_url
 
 
@@ -120,13 +131,13 @@ def main() -> None:
     failures = []
 
     pwcli = str(Path.home() / ".codex/skills/playwright/scripts/playwright_cli.sh")
-    env = {**os.environ, "CODEX_HOME": str(Path.home() / ".codex")}
+    env = build_runtime_env()
 
     for index, url in enumerate(urls, 1):
         print(f"[{index}/{len(urls)}] {url}", flush=True)
         try:
             print("stage: resolving-share-url", flush=True)
-            effective_url = resolve_share_url(pwcli, env, url, min(args.timeout_seconds, 20))
+            effective_url = resolve_share_url(url, min(args.timeout_seconds, 20))
             if effective_url != url:
                 print(f"resolved-url: {effective_url}", flush=True)
             print("stage: extracting-video", flush=True)
